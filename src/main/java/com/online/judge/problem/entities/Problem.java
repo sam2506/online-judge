@@ -1,5 +1,7 @@
 package com.online.judge.problem.entities;
 
+import com.online.judge.output.entities.Output;
+import com.online.judge.test.entities.Test;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,4 +28,7 @@ public class Problem {
     private String contestId;
     private List<String> constraints;
     private String testId;
+    private Boolean visibility;
+    private Test testCases;
+    private Output output;
 }

@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface ProblemRepository extends MongoRepository<Problem, String> {
     public Problem findByProblemId(String problemId);
-    public List<Problem> findAll();
+    public List<Problem> findByVisibility(Boolean visibility);
 }
