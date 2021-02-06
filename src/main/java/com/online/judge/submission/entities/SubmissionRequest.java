@@ -21,7 +21,7 @@ public class SubmissionRequest {
     public String problemId;
     public String userName;
     public String code;
-//    public Language languageId;
+    public Language languageId;
     public String contestId;
-//    public Date timestamp;
+    public Date timestamp;
 }

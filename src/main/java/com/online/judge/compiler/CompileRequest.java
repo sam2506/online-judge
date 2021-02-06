@@ -14,6 +14,6 @@ import lombok.Setter;
 @Setter
 public class CompileRequest {
     SubmissionRequest submissionRequest;
-    Test test;
-    Output output;
+    double timeLimit;
+    int memoryLimit;
 }

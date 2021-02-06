@@ -1,5 +1,6 @@
 package com.online.judge.test.entities;
 
+import com.online.judge.verdict.Verdict;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,7 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class Test {
-    int x;
-    int y;
+public class TestCaseResponse {
+    int testCaseNo;
+    Verdict verdict;
 }

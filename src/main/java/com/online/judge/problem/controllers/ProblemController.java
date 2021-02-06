@@ -1,14 +1,12 @@
 package com.online.judge.problem.controllers;
 
 import com.online.judge.compiler.CompileRequest;
-import com.online.judge.config.rabbitmq.MessagingConfig;
-import com.online.judge.output.entities.Output;
 import com.online.judge.problem.entities.Problem;
 import com.online.judge.problem.repositories.ProblemRepository;
 import com.online.judge.submission.entities.SubmissionRequest;
-import com.online.judge.test.entities.Test;
-import com.online.judge.verdict.Verdict;
+import com.online.judge.test.entities.TestCaseResponse;
 import lombok.Setter;
+import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +20,7 @@ import java.util.Optional;
 @RequestMapping(value = "/problems")
 @ConfigurationProperties(prefix = "pending.testcases")
 @Setter
+@RabbitListener(queues = "completed_test_cases_queue")
 public class ProblemController {
 
     private String exchange;
@@ -72,18 +71,26 @@ public class ProblemController {
                                   @RequestBody SubmissionRequest submissionRequest) {
         Optional<Problem> problem = problemRepository.findById(problemId);
         if(problem.isPresent()) {
-            Test test = problem.get().getTestCases();
-            Output output = problem.get().getOutput();
-            CompileRequest compileRequest = new CompileRequest(submissionRequest, test, output);
+            CompileRequest compileRequest = new CompileRequest();
+            compileRequest.setSubmissionRequest(submissionRequest);
+            compileRequest.setTimeLimit(problem.get().getTimeLimit());
+            compileRequest.setMemoryLimit(problem.get().getMemoryLimit());
             template.convertAndSend(exchange, routingKey, compileRequest);
-            return "success";
+            return "submission queued";
         } else {
             return "problem does not exist";
         }
     }
 
-    @RabbitListener(queues = "completed_test_cases_queue")
-    public void testCompleteListener(String message) {
-        System.out.println("fbdbffdbfd");
+    @RabbitHandler
+    public void testCompleteListener(TestCaseResponse testCaseResponse) {
+        int testCaseNo = testCaseResponse.getTestCaseNo();
+        String verdict = testCaseResponse.getVerdict().toString();
+        System.out.println("Test Case " + testCaseNo + " " + verdict);
     }
+    @RabbitHandler
+    public void compilationErrorListener(String message) {
+        System.out.println(message);
+    }
+
 }
