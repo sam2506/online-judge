@@ -8,7 +8,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.DefaultClassMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,33 +15,30 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-@ConfigurationProperties(prefix = "pending.testcases")
 @Setter
 public class MessagingConfig {
 
-    private String exchange;
-    private String queueName;
-    private String routingKey;
-
-    @Bean
-    public Queue queue() {
-        return new Queue(queueName);
-    }
-
-    @Bean
-    public TopicExchange exchange() {
-        return new TopicExchange(exchange);
-    }
-
-    @Bean
-    public Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with(routingKey);
-    }
+//    private String exchange;
+//    private String queueName;
+//    private String routingKey;
+//
+//    @Bean
+//    public Queue queue() {
+//        return new Queue(queueName);
+//    }
+//
+//    @Bean
+//    public TopicExchange exchange() {
+//        return new TopicExchange(exchange);
+//    }
+//
+//    @Bean
+//    public Binding binding(Queue queue, TopicExchange exchange) {
+//        return BindingBuilder.bind(queue).to(exchange).with(routingKey);
+//    }
 
     @Bean
     public MessageConverter converter() {
-//        return new Jackson2JsonMessageConverter();
-
         Jackson2JsonMessageConverter messageConverter = new Jackson2JsonMessageConverter();
         DefaultClassMapper classMapper = new DefaultClassMapper();
         Map<String, Class<?>> idClassMapping = new HashMap<>();

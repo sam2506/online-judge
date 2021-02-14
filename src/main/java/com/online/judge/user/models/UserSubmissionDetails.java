@@ -1,4 +1,4 @@
-package com.online.judge.submission.entities;
+package com.online.judge.user.models;
 
 import com.online.judge.language.Language;
 import com.online.judge.verdict.Verdict;
@@ -6,8 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
 
@@ -15,16 +13,12 @@ import java.util.Date;
 @NoArgsConstructor
 @Getter
 @Setter
-@Document(collection = "SUBMISSIONS")
-public class Submission {
+public class UserSubmissionDetails {
 
-    @Id
     private String submissionId;
     private String problemId;
     private String userName;
-    private String code;
     private Language languageId;
-    private String contestId;
     private Verdict verdict;
     private Date timestamp;
 }

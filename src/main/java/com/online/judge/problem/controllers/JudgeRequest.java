@@ -1,8 +1,6 @@
-package com.online.judge.compiler;
+package com.online.judge.problem.controllers;
 
-import com.online.judge.output.entities.Output;
-import com.online.judge.submission.entities.SubmissionRequest;
-import com.online.judge.test.entities.Test;
+import com.online.judge.submission.controllers.SubmissionRequest;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,7 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class CompileRequest {
+public class JudgeRequest {
     SubmissionRequest submissionRequest;
     double timeLimit;
     int memoryLimit;
