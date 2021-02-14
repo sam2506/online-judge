@@ -1,6 +1,6 @@
 package com.online.judge.config.rabbitmq;
 
-import com.online.judge.test.entities.TestCaseResponse;
+import com.online.judge.test.TestCaseResponse;
 import lombok.Setter;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;

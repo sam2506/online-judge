@@ -9,7 +9,7 @@ import com.online.judge.problem.repositories.ProblemRepository;
 import com.online.judge.submission.entities.Submission;
 import com.online.judge.submission.controllers.SubmissionRequest;
 import com.online.judge.submission.repositories.SubmissionRepository;
-import com.online.judge.test.entities.TestCaseResponse;
+import com.online.judge.test.TestCaseResponse;
 import com.online.judge.verdict.Verdict;
 import lombok.Setter;
 import org.modelmapper.ModelMapper;

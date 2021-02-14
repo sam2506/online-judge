@@ -1,4 +1,4 @@
-package com.online.judge.test.entities;
+package com.online.judge.test;
 
 import com.online.judge.verdict.Verdict;
 import lombok.AllArgsConstructor;
