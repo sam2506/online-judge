@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 
+import javax.validation.constraints.NotNull;
 import java.util.Date;
 
 @AllArgsConstructor
@@ -20,7 +21,9 @@ public class SubmissionRequest {
     private String submissionId;
     public String problemId;
     public String userName;
+    @NotNull
     public String code;
+    @NotNull
     public Language languageId;
     public String contestId;
     public Date timestamp;

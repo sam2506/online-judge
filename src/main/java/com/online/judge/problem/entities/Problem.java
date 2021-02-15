@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @AllArgsConstructor
@@ -18,13 +19,17 @@ public class Problem {
 
     @Id
     private String problemId;
+    @NotNull
     private String problemName;
+    @NotNull
     private String problemDesc;
     private String setterName;
+    @NotNull
     private double timeLimit;
+    @NotNull
     private int memoryLimit;
-    private String contestId;
+    @NotNull
     private List<String> constraints;
-    private String testId;
+    @NotNull
     private Boolean visibility;
 }

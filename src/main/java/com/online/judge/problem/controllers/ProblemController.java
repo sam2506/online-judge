@@ -25,6 +25,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
+import javax.validation.Valid;
 import java.security.Principal;
 import java.util.*;
 
@@ -87,7 +88,7 @@ public class ProblemController {
     }
 
     @RequestMapping(value = "", method = RequestMethod.POST)
-    private ResponseEntity<String> createProblem(Principal principal, @RequestBody Problem problem) {
+    private ResponseEntity<String> createProblem(Principal principal, @Valid @RequestBody Problem problem) {
         String loggedInUserName = principal != null ? principal.getName() : null;
         problem.setSetterName(loggedInUserName);
         problemRepository.save(problem);
@@ -95,7 +96,7 @@ public class ProblemController {
     }
 
     @RequestMapping(value = "/{problemId}/edit", method = RequestMethod.PUT)
-    private ResponseEntity<String> editProblem(Principal principal, @PathVariable String problemId, @RequestBody Problem editedProblem) {
+    private ResponseEntity<String> editProblem(Principal principal, @PathVariable String problemId, @Valid @RequestBody Problem editedProblem) {
         String loggedInUserName = principal != null ? principal.getName() : null;
         Optional<Problem> originalProblem = problemRepository.findById(problemId);
         if(originalProblem.isPresent()) {
@@ -157,7 +158,7 @@ public class ProblemController {
 
     @RequestMapping(value = "/{problemId}/submit", method = RequestMethod.POST)
     private ResponseEntity<String> submitProblem(Principal principal, @PathVariable String problemId,
-                                  @RequestBody SubmissionRequest submissionRequest) {
+                                  @Valid @RequestBody SubmissionRequest submissionRequest) {
         Date timeOfSubmission = new Date();
         submissionRequest.setUserName(principal.getName());
         Optional<Problem> problem = problemRepository.findById(problemId);

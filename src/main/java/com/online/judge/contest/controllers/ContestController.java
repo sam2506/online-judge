@@ -24,6 +24,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
+import javax.validation.Valid;
 import java.security.Principal;
 import java.util.*;
 
@@ -101,7 +102,7 @@ public class ContestController {
     }
 
     @RequestMapping(value = "", method = RequestMethod.POST)
-    private ResponseEntity<String> createContest(Principal principal, @RequestBody Contest contest) {
+    private ResponseEntity<String> createContest(Principal principal, @Valid @RequestBody Contest contest) {
         String loggedInUserName = principal != null ? principal.getName() : null;
         for(String problemId : contest.getProblemIdList()) {
             Optional<Problem> problem = problemRepository.findById(problemId);
@@ -113,6 +114,11 @@ public class ContestController {
                 throw new NotFoundException("ProblemId:" + problemId + " not found");
             }
         }
+        if(!contest.getModerators().contains(loggedInUserName)) {
+            contest.getModerators().add(loggedInUserName);
+        }
+        contest.setRegisteredUsers(Collections.emptyList());
+        contest.setSubmissionList(Collections.emptyList());
         contestRepository.save(contest);
         return ResponseEntity.status(HttpStatus.CREATED).body("success");
     }
@@ -144,7 +150,7 @@ public class ContestController {
 
     @RequestMapping(value = "/{contestId}/problem/{problemId}/submit", method = RequestMethod.POST)
     private ResponseEntity<String> submitProblem(Principal principal, @PathVariable String contestId, @PathVariable String problemId,
-                                                 @RequestBody SubmissionRequest submissionRequest) {
+                                                 @Valid @RequestBody SubmissionRequest submissionRequest) {
         Date timeOfSubmission = new Date();
         submissionRequest.setUserName(principal.getName());
         Optional<Contest> contest = contestRepository.findById(contestId);
