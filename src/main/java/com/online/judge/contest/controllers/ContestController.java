@@ -214,7 +214,7 @@ public class ContestController {
         }
     }
 
-    @RequestMapping(value = "/{contestId}/problem/{problemId}}", method = RequestMethod.DELETE)
+    @RequestMapping(value = "/{contestId}/problem/{problemId}", method = RequestMethod.DELETE)
     private ResponseEntity<String> deleteProblem(Principal principal, @PathVariable String contestId, @PathVariable String problemId,
                                  @RequestBody String userName) {
 
