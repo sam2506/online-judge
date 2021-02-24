@@ -5,6 +5,7 @@ import com.online.judge.common.exceptions.NotFoundException;
 import com.online.judge.contest.entities.Contest;
 import com.online.judge.contest.models.ContestDetails;
 import com.online.judge.contest.repositories.ContestRepository;
+import com.online.judge.leaderboard.Leaderboard;
 import com.online.judge.problem.controllers.JudgeRequest;
 import com.online.judge.problem.entities.Problem;
 import com.online.judge.problem.models.ProblemDetails;
@@ -18,7 +19,9 @@ import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -51,6 +54,9 @@ public class ContestController {
     private RestTemplate restTemplate;
 
     @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @Autowired
     private ModelMapper modelMapper;
 
     @PostConstruct
@@ -58,10 +64,8 @@ public class ContestController {
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
     }
 
-
     @RequestMapping(value = "", method = RequestMethod.GET)
     private ResponseEntity<List<ContestDetails>> getAllContests() {
-        Date currentTime = new Date();
         List<Contest> contestList = contestRepository.findAll();
         List<ContestDetails> contestDetailsList = new ArrayList<ContestDetails>();
         for(Contest contest : contestList) {
@@ -119,6 +123,7 @@ public class ContestController {
         }
         contest.setRegisteredUsers(Collections.emptyList());
         contest.setSubmissionList(Collections.emptyList());
+        contest.setLeaderboard(new Leaderboard(UUID.randomUUID().toString(), contest.getContestId(), Collections.emptyList()));
         contestRepository.save(contest);
         return ResponseEntity.status(HttpStatus.CREATED).body("success");
     }
@@ -148,32 +153,79 @@ public class ContestController {
         return submission;
     }
 
+    private void updateLeaderBoard(String contestId, String userName, Long totalTimeOfSubmission) {
+        final double POINTS_ON_WA_SUBMISSION = 0;
+        if(redisTemplate.opsForZSet().score(contestId, userName) == null) {
+            redisTemplate.opsForZSet().add(contestId, userName, POINTS_ON_WA_SUBMISSION);
+        }
+        if(totalTimeOfSubmission != 0) {
+            final long POINTS_ON_AC_SUBMISSION = 100000000;
+            final long MAX_TOTAL_TIME_OF_SUBMISSION = 1000000;
+            redisTemplate.opsForZSet().incrementScore(contestId, userName, -1.0 * POINTS_ON_AC_SUBMISSION + MAX_TOTAL_TIME_OF_SUBMISSION - totalTimeOfSubmission);
+        }
+    }
+
+    @RequestMapping(value = "/{contestId}/leaderboard", method = RequestMethod.GET)
+    private ResponseEntity<Long> getRankOfUser(@PathVariable String contestId, @RequestParam("userName") String userName) {
+        Double scoreOfUser = redisTemplate.opsForZSet().score(contestId, userName);
+        if(scoreOfUser == null) {
+            throw new NotFoundException("user has not submitted any problem in the contest");
+        }
+        Long rankOfUser = redisTemplate.opsForZSet().count(contestId, Double.NEGATIVE_INFINITY, scoreOfUser - 1);
+        return ResponseEntity.status(HttpStatus.OK).body(rankOfUser);
+    }
+
+    private JudgeRequest createJudgeRequest(SubmissionRequest submissionRequest, Problem problem) {
+        JudgeRequest judgeRequest = new JudgeRequest();
+        judgeRequest.setSubmissionRequest(submissionRequest);
+        judgeRequest.setTimeLimit(problem.getTimeLimit());
+        judgeRequest.setMemoryLimit(problem.getMemoryLimit());
+        return judgeRequest;
+    }
+
+    private String sendJudgeRequest(JudgeRequest judgeRequest) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        HttpEntity<JudgeRequest> entity =
+                new HttpEntity<JudgeRequest> (judgeRequest, headers);
+        return restTemplate.postForObject(JUDGE_URL, entity, String.class);
+    }
+
     @RequestMapping(value = "/{contestId}/problem/{problemId}/submit", method = RequestMethod.POST)
+    @Transactional
     private ResponseEntity<String> submitProblem(Principal principal, @PathVariable String contestId, @PathVariable String problemId,
                                                  @Valid @RequestBody SubmissionRequest submissionRequest) {
         Date timeOfSubmission = new Date();
         submissionRequest.setUserName(principal.getName());
+        submissionRequest.setProblemId(problemId);
         Optional<Contest> contest = contestRepository.findById(contestId);
         if(contest.isPresent()) {
+            if(contest.get().getStartTime().after(timeOfSubmission)) {
+                throw new ForbiddenException("contest not started yet");
+            }
+            if(contest.get().getEndTime().before(timeOfSubmission)) {
+                throw new ForbiddenException("contest has ended");
+            }
             if(contest.get().getProblemIdList().contains(problemId)) {
                 Problem problem = problemRepository.findByProblemId(problemId);
-                JudgeRequest judgeRequest = new JudgeRequest();
-                judgeRequest.setSubmissionRequest(submissionRequest);
-                judgeRequest.setTimeLimit(problem.getTimeLimit());
-                judgeRequest.setMemoryLimit(problem.getMemoryLimit());
+                JudgeRequest judgeRequest = createJudgeRequest(submissionRequest, problem);
                 try {
-                    HttpHeaders headers= new HttpHeaders();
-                    headers.setContentType(MediaType.APPLICATION_JSON);
-                    headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-                    HttpEntity<JudgeRequest> entity =
-                            new HttpEntity<JudgeRequest> (judgeRequest, headers);
-                    String verdict = restTemplate.postForObject(JUDGE_URL, entity, String.class);
+                    String verdict = sendJudgeRequest(judgeRequest);
                     Submission submission = getSubmissionFromSubmissionRequest(
                             submissionRequest, verdict, timeOfSubmission);
-                    submission.setProblemId(problemId);
                     submission.setContestId(contestId);
-                    contest.get().getSubmissionList().add(submission);
-                    contestRepository.save(contest.get());
+                    Long totalTimeOfSubmissionInSec = (timeOfSubmission.getTime() - contest.get().getStartTime().getTime()) / 1000;
+                    if(verdict != null && verdict.equals(Verdict.AC.toString())) {
+                        if(!contestRepository.checkIfUserAlreadySubmittedTheProblem(contestId, problemId, principal.getName())) {
+                            updateLeaderBoard(contestId, principal.getName(), totalTimeOfSubmissionInSec);
+                            contestRepository.updateLeaderboardOfContest(contestId, principal.getName(), problemId, totalTimeOfSubmissionInSec);
+                        }
+                    }
+                    if(verdict != null && verdict.equals(Verdict.WA.toString())) {
+                        updateLeaderBoard(contestId, principal.getName(), 0L);
+                    }
+                    contestRepository.addSubmission(contestId, submission);
                     submissionRepository.save(submission);
                     return ResponseEntity.status(HttpStatus.OK).body(verdict);
                 } catch (RestClientException e) {

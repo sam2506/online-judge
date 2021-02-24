@@ -30,7 +30,7 @@ public class JudgeUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.getEmailId();
+        return user.getUserName();
     }
 
     @Override

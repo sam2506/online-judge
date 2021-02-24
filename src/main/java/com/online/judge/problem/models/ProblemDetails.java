@@ -20,6 +20,5 @@ public class ProblemDetails {
     private String setterName;
     private double timeLimit;
     private int memoryLimit;
-    private String contestId;
     private List<String> constraints;
 }

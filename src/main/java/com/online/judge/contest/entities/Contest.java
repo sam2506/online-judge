@@ -1,5 +1,6 @@
 package com.online.judge.contest.entities;
 
+import com.online.judge.leaderboard.Leaderboard;
 import com.online.judge.submission.entities.Submission;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -33,4 +34,5 @@ public class Contest {
     @NotNull
     private List<String> problemIdList;
     private List<Submission> submissionList;
+    private Leaderboard leaderboard;
 }

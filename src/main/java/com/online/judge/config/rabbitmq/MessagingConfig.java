@@ -18,25 +18,6 @@ import java.util.Map;
 @Setter
 public class MessagingConfig {
 
-//    private String exchange;
-//    private String queueName;
-//    private String routingKey;
-//
-//    @Bean
-//    public Queue queue() {
-//        return new Queue(queueName);
-//    }
-//
-//    @Bean
-//    public TopicExchange exchange() {
-//        return new TopicExchange(exchange);
-//    }
-//
-//    @Bean
-//    public Binding binding(Queue queue, TopicExchange exchange) {
-//        return BindingBuilder.bind(queue).to(exchange).with(routingKey);
-//    }
-
     @Bean
     public MessageConverter converter() {
         Jackson2JsonMessageConverter messageConverter = new Jackson2JsonMessageConverter();

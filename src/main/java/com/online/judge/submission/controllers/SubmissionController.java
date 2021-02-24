@@ -33,7 +33,7 @@ public class SubmissionController {
             if(submission.get().getContestId() == null) {
                 return ResponseEntity.status(HttpStatus.OK).body(submission.get());
             } else {
-                Contest contest = contestRepository.findByContestId(submission.get().getSubmissionId());
+                Contest contest = contestRepository.findByContestId(submission.get().getContestId());
                 Date currentTime = new Date();
                 if(contest.getEndTime().before(currentTime) ||
                         submission.get().getUserName().equals(loggedInUserName)) {

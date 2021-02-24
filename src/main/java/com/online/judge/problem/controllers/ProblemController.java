@@ -156,27 +156,36 @@ public class ProblemController {
         }
     }
 
+    private JudgeRequest createJudgeRequest(SubmissionRequest submissionRequest, Problem problem) {
+        JudgeRequest judgeRequest = new JudgeRequest();
+        judgeRequest.setSubmissionRequest(submissionRequest);
+        judgeRequest.setTimeLimit(problem.getTimeLimit());
+        judgeRequest.setMemoryLimit(problem.getMemoryLimit());
+        return judgeRequest;
+    }
+
+    private String sendJudgeRequest(JudgeRequest judgeRequest) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        HttpEntity<JudgeRequest> entity =
+                new HttpEntity<JudgeRequest> (judgeRequest, headers);
+        return restTemplate.postForObject(JUDGE_URL, entity, String.class);
+    }
+
     @RequestMapping(value = "/{problemId}/submit", method = RequestMethod.POST)
     private ResponseEntity<String> submitProblem(Principal principal, @PathVariable String problemId,
                                   @Valid @RequestBody SubmissionRequest submissionRequest) {
         Date timeOfSubmission = new Date();
         submissionRequest.setUserName(principal.getName());
+        submissionRequest.setProblemId(problemId);
         Optional<Problem> problem = problemRepository.findById(problemId);
         if(problem.isPresent()) {
-            JudgeRequest judgeRequest = new JudgeRequest();
-            judgeRequest.setSubmissionRequest(submissionRequest);
-            judgeRequest.setTimeLimit(problem.get().getTimeLimit());
-            judgeRequest.setMemoryLimit(problem.get().getMemoryLimit());
+            JudgeRequest judgeRequest = createJudgeRequest(submissionRequest, problem.get());
             try {
-                HttpHeaders headers= new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-                HttpEntity<JudgeRequest> entity =
-                        new HttpEntity<JudgeRequest> (judgeRequest, headers);
-                String verdict = restTemplate.postForObject(JUDGE_URL, entity, String.class);
+                String verdict = sendJudgeRequest(judgeRequest);
                 Submission submission = getSubmissionFromSubmissionRequest(
                         submissionRequest, verdict, timeOfSubmission);
-                submission.setProblemId(problemId);
                 submissionRepository.save(submission);
                 return ResponseEntity.status(HttpStatus.OK).body(verdict);
             } catch (RestClientException e) {
