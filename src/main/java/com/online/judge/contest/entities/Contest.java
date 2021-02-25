@@ -1,5 +1,6 @@
 package com.online.judge.contest.entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.online.judge.leaderboard.Leaderboard;
 import com.online.judge.submission.entities.Submission;
 import lombok.AllArgsConstructor;
@@ -25,8 +26,10 @@ public class Contest {
     @NotNull
     private String contestName;
     @NotNull
+    @JsonFormat(shape=JsonFormat.Shape.STRING, pattern="yyyy-MM-dd HH:mm:ss")
     private Date startTime;
     @NotNull
+    @JsonFormat(shape=JsonFormat.Shape.STRING, pattern="yyyy-MM-dd HH:mm:ss")
     private Date endTime;
     @NotNull
     private List<String> moderators;
