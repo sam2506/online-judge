@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
@@ -20,7 +21,9 @@ public class Submission {
 
     @Id
     private String submissionId;
+    @Indexed
     private String problemId;
+    @Indexed
     private String userName;
     private String code;
     private Language languageId;
