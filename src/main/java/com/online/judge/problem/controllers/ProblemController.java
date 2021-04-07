@@ -3,6 +3,7 @@ package com.online.judge.problem.controllers;
 import com.online.judge.amazons3.AmazonS3Service;
 import com.online.judge.common.exceptions.ForbiddenException;
 import com.online.judge.common.exceptions.NotFoundException;
+import com.online.judge.compiler.CompilationResponse;
 import com.online.judge.problem.entities.Problem;
 import com.online.judge.problem.models.ProblemDetails;
 import com.online.judge.problem.repositories.ProblemRepository;
@@ -19,6 +20,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -52,6 +55,9 @@ public class ProblemController {
 
     @Autowired
     private AmazonS3Service amazonS3Service;
+
+    @Autowired
+    private SimpMessagingTemplate simpMessagingTemplate;
 
     @PostConstruct
     void init() {
@@ -197,15 +203,23 @@ public class ProblemController {
         }
     }
 
+    @MessageMapping("/submissionKey")
+    public void receiveMessage(String message) {
+        System.out.println(message);
+    }
+
     @RabbitHandler
     public void testCompleteListener(TestCaseResponse testCaseResponse) {
         int testCaseNo = testCaseResponse.getTestCaseNo();
         String verdict = testCaseResponse.getVerdict().toString();
+        String userName = testCaseResponse.getUserName();
         System.out.println("Test Case " + testCaseNo + " " + verdict);
+        simpMessagingTemplate.convertAndSendToUser(userName, "/queue/testCaseResponses", testCaseResponse);
     }
     @RabbitHandler
-    public void compilationErrorListener(String message) {
-        System.out.println(message);
+    public void compilationListener(CompilationResponse compilationResponse) {
+        String userName = compilationResponse.getUserName();
+        simpMessagingTemplate.convertAndSendToUser(userName, "/queue/compilationResponse", compilationResponse);
     }
 
 }

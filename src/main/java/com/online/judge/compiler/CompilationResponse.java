@@ -1,6 +1,5 @@
-package com.online.judge.test;
+package com.online.judge.compiler;
 
-import com.online.judge.verdict.Verdict;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,9 +9,9 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class TestCaseResponse {
-    int testCaseNo;
-    Verdict verdict;
+public class CompilationResponse {
+    boolean isCompilationSuccessful;
+    int noOfTestCases;
     String submissionId;
     String userName;
 }

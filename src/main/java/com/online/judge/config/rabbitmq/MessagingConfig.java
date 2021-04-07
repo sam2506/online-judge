@@ -1,5 +1,6 @@
 package com.online.judge.config.rabbitmq;
 
+import com.online.judge.compiler.CompilationResponse;
 import com.online.judge.test.TestCaseResponse;
 import lombok.Setter;
 import org.springframework.amqp.core.*;
@@ -25,6 +26,8 @@ public class MessagingConfig {
         Map<String, Class<?>> idClassMapping = new HashMap<>();
         idClassMapping.put(
                 "com.docker.sandbox.testcase.TestCaseResponse", TestCaseResponse.class);
+        idClassMapping.put(
+                "com.docker.sandbox.compiler.CompilationResponse", CompilationResponse.class);
         classMapper.setIdClassMapping(idClassMapping);
         messageConverter.setClassMapper(classMapper);
         return messageConverter;
