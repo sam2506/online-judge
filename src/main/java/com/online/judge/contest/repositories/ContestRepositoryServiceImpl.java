@@ -3,6 +3,7 @@ package com.online.judge.contest.repositories;
 import com.online.judge.contest.entities.Contest;
 import com.online.judge.submission.entities.Submission;
 import com.online.judge.user.models.UserContestStats;
+import com.online.judge.verdict.Verdict;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -10,6 +11,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class ContestRepositoryServiceImpl implements ContestRepositoryService {
@@ -56,5 +58,26 @@ public class ContestRepositoryServiceImpl implements ContestRepositoryService {
                 .and("leaderboard.userContestStatsList.userName").is(userName)
                 .and("leaderboard.userContestStatsList.$.solvedProblemIdList").in(problemId));
         return mongoTemplate.find(query, Contest.class).size() != 0;
+    }
+
+    @Override
+    public Date findStartTimeOfContest(String contestId) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("contestId").is(contestId));
+        query.fields().include("startTime").exclude(contestId);
+        Contest contest = mongoTemplate.findOne(query, Contest.class);
+        if(contest != null)
+            return contest.getStartTime();
+        else
+            return null;
+    }
+
+    @Override
+    public void updateVerdictOfSubmission(String contestId, String submissionId, Verdict verdict) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("contestId").is(contestId)
+                .and("submissionList.submissionId").is(submissionId));
+        Update update = new Update();
+        update.set("submissionList.$.verdict", verdict);
     }
 }

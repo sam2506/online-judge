@@ -10,21 +10,20 @@ import com.online.judge.problem.controllers.JudgeRequest;
 import com.online.judge.problem.entities.Problem;
 import com.online.judge.problem.models.ProblemDetails;
 import com.online.judge.problem.repositories.ProblemRepository;
-import com.online.judge.submission.controllers.SubmissionRequest;
+import com.online.judge.rabbitmq.SubmissionHandler;
+import com.online.judge.submission.models.SubmissionRequest;
 import com.online.judge.submission.entities.Submission;
+import com.online.judge.submission.models.SubmissionSuccessResponse;
 import com.online.judge.submission.repositories.SubmissionRepository;
 import com.online.judge.user.repositories.UserRepository;
-import com.online.judge.verdict.Verdict;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.*;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import javax.validation.Valid;
@@ -34,9 +33,6 @@ import java.util.*;
 @RestController
 @RequestMapping(value = "/contests")
 public class ContestController {
-
-    @Value("${judge.api.url}")
-    private String JUDGE_URL;
 
     @Autowired
     private ContestRepository contestRepository;
@@ -51,7 +47,7 @@ public class ContestController {
     private SubmissionRepository submissionRepository;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private SubmissionHandler submissionHandler;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -145,24 +141,11 @@ public class ContestController {
     }
 
     private Submission getSubmissionFromSubmissionRequest(
-            SubmissionRequest submissionRequest, String verdict, Date timeOfSubmission) {
+            SubmissionRequest submissionRequest, Date timeOfSubmission) {
 
         Submission submission = modelMapper.map(submissionRequest, Submission.class);
         submission.setTimestamp(timeOfSubmission);
-        submission.setVerdict(Verdict.valueOf(verdict));
         return submission;
-    }
-
-    private void updateLeaderBoard(String contestId, String userName, Long totalTimeOfSubmission) {
-        final double POINTS_ON_WA_SUBMISSION = 0;
-        if(redisTemplate.opsForZSet().score(contestId, userName) == null) {
-            redisTemplate.opsForZSet().add(contestId, userName, POINTS_ON_WA_SUBMISSION);
-        }
-        if(totalTimeOfSubmission != 0) {
-            final long POINTS_ON_AC_SUBMISSION = 100000000;
-            final long MAX_TOTAL_TIME_OF_SUBMISSION = 1000000;
-            redisTemplate.opsForZSet().incrementScore(contestId, userName, -1.0 * POINTS_ON_AC_SUBMISSION + MAX_TOTAL_TIME_OF_SUBMISSION - totalTimeOfSubmission);
-        }
     }
 
     @RequestMapping(value = "/{contestId}/leaderboard", method = RequestMethod.GET)
@@ -183,18 +166,9 @@ public class ContestController {
         return judgeRequest;
     }
 
-    private String sendJudgeRequest(JudgeRequest judgeRequest) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        HttpEntity<JudgeRequest> entity =
-                new HttpEntity<JudgeRequest> (judgeRequest, headers);
-        return restTemplate.postForObject(JUDGE_URL, entity, String.class);
-    }
-
     @RequestMapping(value = "/{contestId}/problem/{problemId}/submit", method = RequestMethod.POST)
     @Transactional
-    private ResponseEntity<String> submitProblem(Principal principal, @PathVariable String contestId, @PathVariable String problemId,
+    private ResponseEntity<SubmissionSuccessResponse> submitProblem(Principal principal, @PathVariable String contestId, @PathVariable String problemId,
                                                  @Valid @RequestBody SubmissionRequest submissionRequest) {
         Date timeOfSubmission = new Date();
         submissionRequest.setUserName(principal.getName());
@@ -210,28 +184,14 @@ public class ContestController {
             if(contest.get().getProblemIdList().contains(problemId)) {
                 Problem problem = problemRepository.findByProblemId(problemId);
                 JudgeRequest judgeRequest = createJudgeRequest(submissionRequest, problem);
-                try {
-                    String verdict = sendJudgeRequest(judgeRequest);
-                    Submission submission = getSubmissionFromSubmissionRequest(
-                            submissionRequest, verdict, timeOfSubmission);
-                    submission.setContestId(contestId);
-                    Long totalTimeOfSubmissionInSec = (timeOfSubmission.getTime() - contest.get().getStartTime().getTime()) / 1000;
-                    if(verdict != null && verdict.equals(Verdict.AC.toString())) {
-                        if(!contestRepository.checkIfUserAlreadySubmittedTheProblem(contestId, problemId, principal.getName())) {
-                            updateLeaderBoard(contestId, principal.getName(), totalTimeOfSubmissionInSec);
-                            contestRepository.updateLeaderboardOfContest(contestId, principal.getName(), problemId, totalTimeOfSubmissionInSec);
-                        }
-                    }
-                    if(verdict != null && verdict.equals(Verdict.WA.toString())) {
-                        updateLeaderBoard(contestId, principal.getName(), 0L);
-                    }
-                    contestRepository.addSubmission(contestId, submission);
-                    submissionRepository.save(submission);
-                    return ResponseEntity.status(HttpStatus.OK).body(verdict);
-                } catch (RestClientException e) {
-                    e.printStackTrace();
-                    throw new RestClientException(e.toString());
-                }
+                Submission submission = getSubmissionFromSubmissionRequest(
+                        submissionRequest, timeOfSubmission);
+                submission.setContestId(contestId);
+                submissionHandler.pushSubmissionToSubmissionQueue(judgeRequest);
+                contestRepository.addSubmission(contestId, submission);
+                submissionRepository.save(submission);
+                return ResponseEntity.status(HttpStatus.OK).body(new SubmissionSuccessResponse(
+                        submissionRequest.getSubmissionId(), "solution submitted successfully"));
             } else {
                 throw new NotFoundException("ProblemId:" + problemId + " not found");
             }

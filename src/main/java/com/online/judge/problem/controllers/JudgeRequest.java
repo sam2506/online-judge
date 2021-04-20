@@ -1,6 +1,6 @@
 package com.online.judge.problem.controllers;
 
-import com.online.judge.submission.controllers.SubmissionRequest;
+import com.online.judge.submission.models.SubmissionRequest;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

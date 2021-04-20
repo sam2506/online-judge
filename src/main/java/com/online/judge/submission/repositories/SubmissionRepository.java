@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface SubmissionRepository extends MongoRepository<Submission, String> {
     public List<Submission> findByUserName(String userName);
+    public Submission findBySubmissionId(String submissionId);
 }

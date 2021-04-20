@@ -3,28 +3,20 @@ package com.online.judge.problem.controllers;
 import com.online.judge.amazons3.AmazonS3Service;
 import com.online.judge.common.exceptions.ForbiddenException;
 import com.online.judge.common.exceptions.NotFoundException;
-import com.online.judge.compiler.CompilationResponse;
 import com.online.judge.problem.entities.Problem;
 import com.online.judge.problem.models.ProblemDetails;
 import com.online.judge.problem.repositories.ProblemRepository;
+import com.online.judge.rabbitmq.SubmissionHandler;
 import com.online.judge.submission.entities.Submission;
-import com.online.judge.submission.controllers.SubmissionRequest;
+import com.online.judge.submission.models.SubmissionRequest;
+import com.online.judge.submission.models.SubmissionSuccessResponse;
 import com.online.judge.submission.repositories.SubmissionRepository;
-import com.online.judge.test.TestCaseResponse;
-import com.online.judge.verdict.Verdict;
 import lombok.Setter;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.amqp.rabbit.annotation.RabbitHandler;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
@@ -35,11 +27,7 @@ import java.util.*;
 @RestController
 @RequestMapping(value = "/problems")
 @Setter
-@RabbitListener(queues = "completed_test_cases_queue")
 public class ProblemController {
-
-    @Value("${judge.api.url}")
-    private String JUDGE_URL;
 
     @Autowired
     private ProblemRepository problemRepository;
@@ -48,16 +36,13 @@ public class ProblemController {
     private SubmissionRepository submissionRepository;
 
     @Autowired
-    private RestTemplate restTemplate;
-
-    @Autowired
     private ModelMapper modelMapper;
 
     @Autowired
     private AmazonS3Service amazonS3Service;
 
     @Autowired
-    private SimpMessagingTemplate simpMessagingTemplate;
+    private SubmissionHandler submissionHandler;
 
     @PostConstruct
     void init() {
@@ -137,11 +122,10 @@ public class ProblemController {
     }
 
     private Submission getSubmissionFromSubmissionRequest(
-            SubmissionRequest submissionRequest, String verdict, Date timeOfSubmission) {
+            SubmissionRequest submissionRequest, Date timeOfSubmission) {
 
         Submission submission = modelMapper.map(submissionRequest, Submission.class);
         submission.setTimestamp(timeOfSubmission);
-        submission.setVerdict(Verdict.valueOf(verdict));
         return submission;
     }
 
@@ -170,56 +154,27 @@ public class ProblemController {
         return judgeRequest;
     }
 
-    private String sendJudgeRequest(JudgeRequest judgeRequest) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        HttpEntity<JudgeRequest> entity =
-                new HttpEntity<JudgeRequest> (judgeRequest, headers);
-        return restTemplate.postForObject(JUDGE_URL, entity, String.class);
-    }
-
     @RequestMapping(value = "/{problemId}/submit", method = RequestMethod.POST)
-    private ResponseEntity<String> submitProblem(Principal principal, @PathVariable String problemId,
-                                  @Valid @RequestBody SubmissionRequest submissionRequest) {
+    private ResponseEntity<SubmissionSuccessResponse> submitProblem(Principal principal, @PathVariable String problemId,
+                                                                    @Valid @RequestBody SubmissionRequest submissionRequest) {
         Date timeOfSubmission = new Date();
         submissionRequest.setUserName(principal.getName());
         submissionRequest.setProblemId(problemId);
         Optional<Problem> problem = problemRepository.findById(problemId);
         if(problem.isPresent()) {
             JudgeRequest judgeRequest = createJudgeRequest(submissionRequest, problem.get());
-            try {
-                String verdict = sendJudgeRequest(judgeRequest);
-                Submission submission = getSubmissionFromSubmissionRequest(
-                        submissionRequest, verdict, timeOfSubmission);
-                submissionRepository.save(submission);
-                return ResponseEntity.status(HttpStatus.OK).body(verdict);
-            } catch (RestClientException e) {
-                e.printStackTrace();
-                throw new RestClientException(e.toString());
-            }
+            Submission submission = getSubmissionFromSubmissionRequest(submissionRequest, timeOfSubmission);
+            submissionRepository.save(submission);
+            submissionHandler.pushSubmissionToSubmissionQueue(judgeRequest);
+            return ResponseEntity.status(HttpStatus.OK).body(new SubmissionSuccessResponse(
+                    submissionRequest.getSubmissionId(), "solution submitted successfully"));
         } else {
             throw new NotFoundException("ProblemID: " + problemId + " does not exist");
         }
     }
 
-    @MessageMapping("/submissionKey")
-    public void receiveMessage(String message) {
-        System.out.println(message);
-    }
-
-    @RabbitHandler
-    public void testCompleteListener(TestCaseResponse testCaseResponse) {
-        int testCaseNo = testCaseResponse.getTestCaseNo();
-        String verdict = testCaseResponse.getVerdict().toString();
-        String userName = testCaseResponse.getUserName();
-        System.out.println("Test Case " + testCaseNo + " " + verdict);
-        simpMessagingTemplate.convertAndSendToUser(userName, "/queue/testCaseResponses", testCaseResponse);
-    }
-    @RabbitHandler
-    public void compilationListener(CompilationResponse compilationResponse) {
-        String userName = compilationResponse.getUserName();
-        simpMessagingTemplate.convertAndSendToUser(userName, "/queue/compilationResponse", compilationResponse);
-    }
-
+//    @MessageMapping("/submissionKey")
+//    public void receiveMessage(String message) {
+//        System.out.println(message);
+//    }
 }

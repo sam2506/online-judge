@@ -1,4 +1,4 @@
-package com.online.judge.submission.controllers;
+package com.online.judge.submission.models;
 
 import com.online.judge.language.Language;
 import com.online.judge.verdict.Verdict;
