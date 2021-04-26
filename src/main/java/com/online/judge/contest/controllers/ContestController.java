@@ -4,6 +4,7 @@ import com.online.judge.common.exceptions.ForbiddenException;
 import com.online.judge.common.exceptions.NotFoundException;
 import com.online.judge.contest.entities.Contest;
 import com.online.judge.contest.models.ContestDetails;
+import com.online.judge.contest.models.UpcomingContestDetails;
 import com.online.judge.contest.repositories.ContestRepository;
 import com.online.judge.leaderboard.Leaderboard;
 import com.online.judge.problem.controllers.JudgeRequest;
@@ -71,6 +72,13 @@ public class ContestController {
             contestDetailsList.add(contestDetails);
         }
         return ResponseEntity.status(HttpStatus.OK).body(contestDetailsList);
+    }
+
+    @RequestMapping(value = "/upcomingContest", method = RequestMethod.GET)
+    private ResponseEntity<List<UpcomingContestDetails>> getUpcomingContests() {
+        Date currentTime = new Date();
+        List<UpcomingContestDetails> upcomingContestDetails = contestRepository.getContestsWithinAWeek(currentTime);
+        return ResponseEntity.status(HttpStatus.OK).body(upcomingContestDetails);
     }
 
     @RequestMapping(value = "/{contestId}", method = RequestMethod.GET)
