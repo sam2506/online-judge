@@ -69,7 +69,7 @@ public class ContestRepositoryServiceImpl implements ContestRepositoryService {
     public Date findStartTimeOfContest(String contestId) {
         Query query = new Query();
         query.addCriteria(Criteria.where("contestId").is(contestId));
-        query.fields().include("startTime").exclude(contestId);
+        query.fields().include("startTime").exclude("contestId");
         Contest contest = mongoTemplate.findOne(query, Contest.class);
         if(contest != null)
             return contest.getStartTime();
