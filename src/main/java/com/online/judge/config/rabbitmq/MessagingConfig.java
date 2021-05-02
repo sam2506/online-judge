@@ -27,8 +27,13 @@ public class MessagingConfig {
     private String routingKey;
 
     @Bean
-    public Queue queue() {
+    public Queue submissionQueue() {
         return new Queue(queueName);
+    }
+
+    @Bean
+    public Queue completedTestCasesQueue() {
+        return new Queue("completed_test_cases_queue");
     }
 
     @Bean
@@ -37,8 +42,13 @@ public class MessagingConfig {
     }
 
     @Bean
-    public Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with(routingKey);
+    public Binding binding1(TopicExchange exchange) {
+        return BindingBuilder.bind(submissionQueue()).to(exchange).with(routingKey);
+    }
+
+    @Bean
+    public Binding binding2(TopicExchange exchange) {
+        return BindingBuilder.bind(completedTestCasesQueue()).to(exchange).with("completed_test_cases_routingKey");
     }
 
     @Bean
