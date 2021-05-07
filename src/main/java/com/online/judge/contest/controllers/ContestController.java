@@ -100,10 +100,10 @@ public class ContestController {
             }
             Date contestStartTime = contest.get().getStartTime();
             if (currentTime.before(contestStartTime)) {
-                throw new ForbiddenException("Contest not started yet");
-            } else {
-                return ResponseEntity.status(HttpStatus.OK).body(contestDetails);
+                contestDetails.setProblemDetailsList(null);
+                contestDetails.setSubmissionList(null);
             }
+            return ResponseEntity.status(HttpStatus.OK).body(contestDetails);
         } else {
             throw new NotFoundException("ContestId:" + contestId + " not found");
         }
